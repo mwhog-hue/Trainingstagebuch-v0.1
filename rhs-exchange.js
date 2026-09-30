@@ -122,7 +122,7 @@
         ort: o.ort || { name: '', lat: null, lon: null, gelaendeart: '' },
         wetter: o.wetter || {},
         ausbilderKuerzel: o.ausbilderKuerzel || '',
-        helfer: (o.helfer || []).map(h => typeof h === 'string' ? { kuerzel: kuerzel(h) } : Object.assign({}, h, { kuerzel: kuerzel(h.kuerzel || h.name) , name: undefined })),
+        helfer: (o.helfer || []).map(h => typeof h === 'string' ? { kuerzel: kuerzel(h) } : (function (x) { const o = Object.assign({}, x, { kuerzel: kuerzel(x.kuerzel || x.name) }); delete o.name; return o; })(h)),
         ziel: o.ziel || '',
         nutzlast: o.nutzlast || {},
         bewertung: Object.assign({ ergebnis: 'offen', schwierigkeit: null, hundeleistung: null, fuehrerleistung: null,
@@ -145,6 +145,7 @@
     if (obj.bridgeFormat === 'rhs-taktik-assistent-export') return 'flaeche-bridge';
     if (obj.bridgeFormat === 'rhs-mantrailing-assistent-export') return 'mantrailing-bridge';
     if (obj.bridgeFormat === 'rhs-truemmersuchassistent-export') return 'truemmer-bridge';
+    if (/^rhs-(mantrailing|truemmer\w*|flaeche\w*)-protokolle$/.test(str(obj.format)) && Array.isArray(obj.records)) return 'protokolle';
     return null;
   }
 
@@ -159,6 +160,7 @@
       case 'flaeche-bridge': return fromFlaeche(obj);
       case 'mantrailing-bridge': return fromMantrailing(obj);
       case 'truemmer-bridge': return fromTruemmer(obj);
+      case 'protokolle': return fromProtokolle(obj);
     }
   }
 
@@ -309,6 +311,55 @@
       roh: b
     });
     out.records.push(e);
+    return out;
+  }
+
+  // Protokoll-Sicherung der Assistenten („Protokolle sichern (JSON)“): format 'rhs-<sparte>-protokolle', records[] je Vorgang
+  function fromProtokolle(b) {
+    const sparte = normSparte(str(b.format).replace(/^rhs-/, '').replace(/-protokolle$/, ''));
+    const app = 'rh-' + (sparte === 'mantrailing' ? 'mantrailing-assistent' : sparte === 'truemmer' ? 'truemmersuchassistent' : 'flaechensuchassistent');
+    const out = buildPackage({ packageType: 'training', createdAt: b.exportedAt, source: { app, appVersion: str(b.appVersion || '') } });
+    const skala = v => { const n = num(v); return n != null && n >= 1 && n <= 5 ? n : null; };
+    (b.records || []).forEach(r => {
+      const teamText = str(r.team); const tp = teamText.split(/\s*[\/|·]\s*/);
+      const beginn = r.date ? new Date(r.date).toISOString() : (r.savedAt || b.exportedAt);
+      const dauerS = num(r.durationSec);
+      const zs = [];
+      [['progStart', 'Start'], ['progSearch', 'Sucharbeit'], ['progFind', 'Fund'], ['crossConf', 'Kreuzungssicherheit'], ['plsConf', 'Ansatzsicherheit'], ['drive', 'Finderwille'], ['focus', 'Konzentration'], ['load', 'Belastbarkeit'], ['handling', 'Handling HF'], ['independent', 'Selbstständigkeit']]
+        .forEach(([k, l]) => { const v = skala(r[k]); if (v != null) zs.push({ schluessel: k, wert: v, beschriftung: l }); });
+      const res = str(r.result);
+      const erg = /gefunden|Trail bis|Negativ korrekt|erfolg/i.test(res) ? 'erfolgreich' : /abgebrochen/i.test(res) ? 'abgebrochen' : /nicht gefunden|ohne Ergebnis/i.test(res) ? 'nicht_erfolgreich' : /teil/i.test(res) ? 'teilweise' : 'offen';
+      const e = newEntry({
+        id: r.id, typ: /einsatz/i.test(str(r.mode)) ? 'einsatz' : /prüf|pruef/i.test(str(r.mode)) ? 'pruefung' : 'training', sparte,
+        beginn, ende: dauerS ? new Date(Date.parse(beginn) + dauerS * 1000).toISOString() : null,
+        ort: { name: str(r.place || r.lkp || r.startEnv), lat: null, lon: null },
+        wetter: { tempC: num(r.temp), windKmh: num(r.wind), windRichtung: isNaN(Number(r.wind)) ? str(r.wind) : '', niederschlag: str(r.precip) },
+        helfer: r.layer ? [{ kuerzel: kuerzel(r.layer), rolle: 'spurleger' }] : [],
+        nutzlast: Object.assign({
+          teamText, personName: tp[0] || '', hundName: tp.slice(1).join(' / ') || '',
+          trailAlterMin: num(r.trailAgeH) != null ? Math.round(num(r.trailAgeH) * 60) : null, gelegtAm: r.laidAt || null,
+          trailart: { text: str(r.ptype) }, distanzGeplantM: num(r.distPlanned),
+          umfeldStart: str(r.startEnv), umfeldSegmente: r.envRoute || [], verleitungen: [str(r.traffic), str(r.lure)].filter(Boolean),
+          geruchsartikel: (r.articles || []).map(a => typeof a === 'string' ? { art: a } : a), artikelGesamt: num(r.artTotal), artikelGefunden: num(r.artFound),
+          plsErgebnis: str(r.plsResult), plsSek: num(r.plsSec), plsUebergang: str(r.plsToTrail), startverhalten: str(r.startQ),
+          endpool: { erkennbar: str(r.endPool), auffindesituation: str(r.end) },
+          gefunden: erg === 'erfolgreich', anzeige: { art: normAnzeige(r.indication), qualitaet: null },
+          trailLaengeM: num(r.refLenM) || num(r.hfLenM), streckeHFM: num(r.hfLenM), streckeHundM: num(r.dogLenM), streckeSpurlegerM: num(r.refLenM),
+          abweichungMittelM: num(r.devAvgM), abweichungMaxM: num(r.devMaxM), ereignisZaehler: r.counts || {},
+          gpsEreignisse: (r.events || []).map(ev => ({ zeit: ev.t || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type), text: str(ev.note) })),
+          wetterTipps: r.wxTips || null
+        }, sparte === 'truemmer' ? { protokollRoh: true } : {}),
+        bewertung: { ergebnis: erg, hundeleistung: skala(r.rating), zusatzskalen: zs, naechsterSchritt: str(r.goal), trainerbeobachtung: str(r.trainer),
+          freitext: [str(r.strengths) && 'Stärken: ' + r.strengths, str(r.debrief), str(r.notes)].filter(Boolean).join('\n') },
+        anhaenge: r.thumb ? [{ id: r.id + '-thumb', art: 'skizze', format: 'png', daten: r.thumb, notiz: 'Vorschaubild Track' }] : [],
+        quelle: { app, schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: str(b.format) + ' v' + (b.version || 1) },
+        roh: r, fieldMeta: { revision: 1, updatedAt: r.savedAt || nowIso() }
+      });
+      out.records.push(e);
+    });
+    // Person/Hund/Team aus "Name/Hund"
+    const seen = {};
+    out.records.forEach(e => { const n = e.data.nutzlast; if (!n.hundName) return; const key = n.personName + '|' + n.hundName; if (!seen[key]) { const pid = 'p-' + kuerzel(n.personName || 'HF').toLowerCase() + '-' + Object.keys(seen).length, hid = 'h-' + n.hundName.toLowerCase().replace(/\W+/g, '-'); seen[key] = { pid, hid }; if (!out.personen.some(x => x.id === pid)) out.personen.push({ id: pid, name: n.personName, rolle: ['hundefuehrer'] }); if (!out.hunde.some(x => x.id === hid)) out.hunde.push({ id: hid, rufname: n.hundName, sparten: [sparte] }); out.teams.push({ id: pid + ':' + hid + ':' + sparte, personId: pid, hundId: hid, sparte, status: 'in_ausbildung' }); } e.data.teamId = seen[key].pid + ':' + seen[key].hid + ':' + sparte; });
     return out;
   }
 

@@ -66,6 +66,7 @@ button.ghost.danger{color:var(--red);border-color:var(--red)}
 .toast.show{opacity:1}
 .rep{border-left:3px solid var(--moss);padding-left:10px;margin:8px 0}
 .hint{font-size:.82rem;color:var(--muted)}
+.erg{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--green-soft);font-size:.9rem}.erg.bad{background:var(--red-soft)}.erg b{display:block}
 .empty{text-align:center;color:var(--muted);padding:26px 10px}
 table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
 kbd{font-family:inherit;background:var(--green-soft);padding:1px 6px;border-radius:4px}
@@ -177,9 +178,9 @@ kbd{font-family:inherit;background:var(--green-soft);padding:1px 6px;border-radi
 <section class="view" id="v-daten">
   <h2>Daten</h2>
   <details class="card" open><summary>Einlesen</summary><div>
-    <p class="hint">Nimmt jede Datei der RH-App-Familie an: Export aus Flächen-, Mantrailing- oder Trümmersuchassistent, Team-Austausch (rhs-exchange), Sicherungen dieses Tagebuchs.</p>
+    <p class="hint">Nimmt JSON-Dateien der RH-App-Familie an: Übergabe-Export und Protokoll-Sicherung der Assistenten, Team-Austausch (rhs-exchange), Sicherungen dieses Tagebuchs. CSV-Tabellen sind nur zum Lesen in Excel gedacht und werden nicht eingelesen.</p>
     <input type="file" id="d-import" accept=".json,application/json" multiple>
-    <div id="d-import-erg" class="hint"></div>
+    <div id="d-import-erg" hidden></div>
   </div></details>
   <details class="card" open><summary>Sichern und weitergeben</summary><div>
     <div class="btnrow">
