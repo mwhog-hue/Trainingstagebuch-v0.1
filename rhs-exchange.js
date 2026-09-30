@@ -71,8 +71,8 @@
   };
   const normSparte = v => {
     const s = str(v).toLowerCase();
-    if (/fl[äa]ch/.test(s)) return 'flaeche';
-    if (/tr[üu]mm/.test(s)) return 'truemmer';
+    if (/fl(ä|ae|a)ch/.test(s)) return 'flaeche';
+    if (/tr(ü|ue|u)mm/.test(s)) return 'truemmer';
     if (/mantrail|trail/.test(s)) return 'mantrailing';
     if (/gehorsam|unterordnung/.test(s)) return 'gehorsam';
     if (/anzeige/.test(s)) return 'anzeigeverhalten';
@@ -146,6 +146,9 @@
     if (obj.bridgeFormat === 'rhs-mantrailing-assistent-export') return 'mantrailing-bridge';
     if (obj.bridgeFormat === 'rhs-truemmersuchassistent-export' || /^rhs-truemmersuchassistent-back/.test(str(obj.format))) return 'truemmer-bridge';
     if (/^rhs-flaechensuchassistent-eval/.test(str(obj.evaluationFormat))) return 'flaeche-eval';
+    if (obj.backupFormat === 'rhs-trainingstagebuch' && Array.isArray(obj.entries)) return 'tagebuch-rha';
+    if (obj.format === 'rhs-mantrailing-tagebuch' && Array.isArray(obj.entries)) return 'tagebuch-mt';
+    if (obj.format === 'rhs-mantrailing-training-backup' && isObj(obj.state)) return 'tagebuch-mt';
     if (/^rhs-(mantrailing|truemmer\w*|flaeche\w*)-protokolle$/.test(str(obj.format)) && Array.isArray(obj.records)) return 'protokolle';
     return null;
   }
@@ -163,6 +166,8 @@
       case 'truemmer-bridge': return fromTruemmer(obj);
       case 'protokolle': return fromProtokolle(obj);
       case 'flaeche-eval': return fromFlaecheEval(obj);
+      case 'tagebuch-rha': return fromTagebuchRHA(obj);
+      case 'tagebuch-mt': return fromTagebuchMT(obj);
     }
   }
 
@@ -398,6 +403,77 @@
       out.records.push(e);
     });
     out.records.forEach(e => teamAusText(out, e, sparte, null));
+    return out;
+  }
+
+  /* ---------- Alt-Tagebücher (Migration) ---------- */
+  const WORT_SKALA = { 'sehr gut': 5, 'gut': 4, 'befriedigend': 3, 'teilweise': 3, 'ausreichend': 2, 'mangelhaft': 1, 'ungenügend': 1, 'sicher': 4, 'sehr sicher': 5, 'wechselhaft': 3, 'unsicher': 2 };
+  const skalaAusText = v => { const t = str(v).trim(); if (!t) return null; const m = t.match(/^([1-5])\b/); if (m) return Number(m[1]); const n = num(t); if (n != null && n >= 1 && n <= 5) return n; for (const k in WORT_SKALA) if (t.toLowerCase().startsWith(k)) return WORT_SKALA[k]; return null; };
+  const ergebnisAusText = v => { const t = str(v).toLowerCase(); if (!t) return 'offen'; if (/^ja|gefunden|erfolg|bestanden/.test(t)) return 'erfolgreich'; if (/teil|bestätigt|mit hilfe/.test(t)) return 'teilweise'; if (/^nein|nicht gefunden|nicht erfolg|nicht bestanden/.test(t)) return 'nicht_erfolgreich'; if (/abgebrochen/.test(t)) return 'abgebrochen'; return 'offen'; };
+
+  // Trainingstagebuch Rettungshundearbeit (Sicherung, backupFormat 'rhs-trainingstagebuch', v7): Einträge als Label/Wert-Listen
+  function fromTagebuchRHA(b) {
+    const pr = b.profile || {};
+    const out = buildPackage({ packageType: 'bundle', createdAt: b.savedAt, source: { app: 'rh-trainingstagebuch-alt', appVersion: 'backup-v' + (b.backupVersion || '') } });
+    const pid = 'p-' + (kuerzel(pr.fuehrer || 'HF') || 'hf').toLowerCase(), hid = 'h-' + str(pr.hund || 'hund').toLowerCase().replace(/\W+/g, '-');
+    out.personen.push({ id: pid, name: str(pr.fuehrer), rolle: ['hundefuehrer'], organisation: str(pr.staffel) });
+    const sparten = (Array.isArray(pr.disciplines) ? pr.disciplines : []).map(normSparte).filter(Boolean);
+    out.hunde.push({ id: hid, rufname: str(pr.hund), geburtsdatum: str(pr.geb) || null, rasse: str(pr.rasse), sparten: sparten.slice() });
+    if (pr.teamId) out.records.push({ type: 'team', id: pr.teamId, data: { handler: str(pr.fuehrer), dogName: str(pr.hund), dogBirthDate: str(pr.geb), dogBreed: str(pr.rasse), disciplines: pr.disciplines || [], indicationType: str(pr.indicationType) }, fieldMeta: (pr.exchangeMeta || {}).fieldRevisions ? Object.fromEntries(Object.entries(pr.exchangeMeta.fieldRevisions).map(([k, v]) => [k, { revision: v, updatedAt: (pr.exchangeMeta.fieldUpdatedAt || {})[k] }])) : { revision: (pr.exchangeMeta || {}).revision || 1 } });
+    out.orte = (b.trainingPlaces || []).map(o => ({ id: o.id, name: str(o.name), entfernungKm: num(o.distanceKm), gelaendeart: str((o.basic || {})['Geländeart']), beschreibung: Object.entries(o.basic || {}).filter(([k]) => k !== 'Geländeart').map(([k, v]) => k + ': ' + v).join('; '), merkmale: o.chips || {} }));
+    const teamFor = sp => { const id = pid + ':' + hid + ':' + sp; if (!out.teams.some(t => t.id === id)) { out.teams.push({ id, personId: pid, hundId: hid, sparte: sp, status: 'in_ausbildung', anzeigeart: normAnzeige(pr.indicationType) }); const h = out.hunde[0]; if (!h.sparten.includes(sp)) h.sparten.push(sp); } return id; };
+    (b.entries || []).forEach(en => {
+      const F = {}; (en.basic || []).forEach(x => { if (x && x.label) F[x.label] = x.value; });
+      const C = {}; (en.chips || []).forEach(x => { if (x && x.label) C[x.label] = x.values || []; });
+      const g = (l) => { const gr = (en.groups || []).find(x => x.label === l); return gr ? gr.items.map(it => Object.fromEntries((it || []).map(f => [f.label, f.value]))) : []; };
+      const sparte = normSparte(en.discipline || en.disciplineLabel) || 'sonstiges';
+      const datum = str(F['Datum']) || str(en.timestamp).slice(0, 10), zeit = str(F['Uhrzeit']) || '12:00';
+      const beginn = datum ? new Date(datum + 'T' + zeit).toISOString() : en.timestamp;
+      const dauer = num(F['Dauer der eigentlichen Suche']) || num(F['Dauer (Min.)']) || num(F['Dauer']);
+      const vps = g('Helfer / Versteckperson').map(v => ({ kuerzel: kuerzel(v['Kürzel / Initialen'] || v['Kürzel'] || 'VP'), rolle: str(v['Rolle']), alterCa: num(v['Alter (ca.)']), geschlecht: str(v['Geschlecht']), bekanntFuerHund: str(v['Bekanntheit für den Hund']), erfahrung: str(v['Erfahrung als Helfer']),
+        versteckart: str(v['Versteckart / Position']), sichtbar: str(v['Sichtbarkeit für den Hund']), verhaltenImVersteck: str(v['Verhalten im Versteck']), geruchsintensitaet: str(v['Geruchsintensität / Liegezeit']), zugaenglichkeit: str(v['Zugänglichkeit']), zeitImVersteck: str(v['Zeit im Versteck vor Suchbeginn']), lageImGebiet: str(v['Lage im Suchgebiet']),
+        gefunden: /^ja/i.test(str(v['Gefunden / angezeigt'])), gefundenText: str(v['Gefunden / angezeigt']), zeitBisFundMin: num(v['Zeit bis Fund / Anzeige']), verlaufDerSuche: str(v['Verlauf der Suche / Suchqualität']), fuehrbarkeit: str(v['Führbarkeit des Hundes im Gelände']),
+        anzeige: { art: normAnzeige(pr.indicationType), qualitaet: skalaAusText(v['Anzeigequalität']), qualitaetText: str(v['Anzeigequalität']) }, latenzAuffindenBisAnzeigeSek: num(v['Latenzzeit Auffinden – Anzeige (Sek.)'] ?? v['Latenzzeit']), distanzHFHundM: num(v['Distanz HF – Hund bei Anzeigebeginn (m)'] ?? v['Distanz HF-Hund']), haltevermoegenSek: num(v['Haltevermögen / Anzeigedauer (Sek.)'] ?? v['Haltevermögen']), fehlverhalten: str(v['Fehlverhalten bei der Anzeige'] || v['Fehlverhalten']), bewertungText: str(v['Bewertung']), alle: v }));
+      const bekannt = new Set(['Datum', 'Uhrzeit', 'Ort / Übungsstätte', 'Entfernung zur Heimatadresse (km)', 'Temperatur (°C)', 'Wind', 'Windrichtung', 'Niederschlag', 'Licht-/Sichtverhältnisse', 'Gefühlte Temperatur (°C)', 'Relative Luftfeuchte (%)', 'Windgeschwindigkeit (km/h)', 'Windböen (km/h)', 'Bewölkung (%)', 'Wetterbeschreibung', 'Wetterdaten abgerufen am', 'Erfassungsart Wetter/Ort', 'Bodenwind beobachtet', 'Bodenwind / Witterungsverhalten', 'Geländeart', 'Bewuchsdichte', 'Größe Suchgebiet', 'Dauer der eigentlichen Suche', 'Verlauf / Form / Begrenzung des Suchgebiets', 'Anzeigequalität', 'Gesamtbewertung', 'Zusammenarbeit / Führungsverhalten', 'Auffälligkeiten', 'Lernschritt seit dem vorherigen Training', 'Nächster kleinster Trainingsschritt', 'Weitere relevante Beobachtungen', 'Freitext / Notizen', 'Gesundheitszustand vor dem Training', 'Zustand nach dem Training', 'Ermüdungs-/Schmerzanzeichen', 'Pause vor diesem Block', 'Training drinnen / witterungsunabhängig', 'Selbstständigkeit', 'Ergebnis']);
+      const rest = Object.entries(F).filter(([k, v]) => !bekannt.has(k) && str(v)).map(([k, v]) => ({ label: k, value: v }));
+      const e = newEntry({ id: 'rha-' + str(en.id), typ: 'training', sparte, beginn, ende: dauer ? new Date(Date.parse(beginn) + dauer * 6e4).toISOString() : null,
+        ort: { name: str(F['Ort / Übungsstätte']), lat: null, lon: null, gelaendeart: str(F['Geländeart']) },
+        wetter: { tempC: num(F['Temperatur (°C)']), gefuehltC: num(F['Gefühlte Temperatur (°C)']), luftfeuchteProzent: num(F['Relative Luftfeuchte (%)']), windKmh: num(F['Windgeschwindigkeit (km/h)']), boeenKmh: num(F['Windböen (km/h)']), windText: str(F['Wind']), windRichtung: str(F['Windrichtung']), niederschlag: str(F['Niederschlag']), bewoelkungProzent: num(F['Bewölkung (%)']), beschreibung: str(F['Wetterbeschreibung']), lichtSicht: str(F['Licht-/Sichtverhältnisse']), abgerufenAm: str(F['Wetterdaten abgerufen am']) || null, erfassungsart: str(F['Erfassungsart Wetter/Ort']), bodenwindBeobachtet: str(F['Bodenwind beobachtet']), bodenwind: str(F['Bodenwind / Witterungsverhalten']), drinnen: /^ja/i.test(str(F['Training drinnen / witterungsunabhängig'])) },
+        nutzlast: Object.assign({ gebietGroesse: str(F['Größe Suchgebiet']), bewuchsdichte: str(F['Bewuchsdichte']), gelaendeart: [str(F['Geländeart'])].filter(Boolean), lichtSicht: str(F['Licht-/Sichtverhältnisse']), verlaufFormBegrenzung: str(F['Verlauf / Form / Begrenzung des Suchgebiets']), suchdauerMin: dauer, pauseVorBlock: str(F['Pause vor diesem Block']),
+          untergruende: C['Untergründe'] || [], bewuchs: C['Bewuchs / Vegetation'] || [], gelaendemerkmale: C['Geländemerkmale'] || [], belastungen: C['Besondere Belastungen'] || [], chips: C, weitereFelder: rest, gruppen: (en.groups || []).filter(x => x.label !== 'Helfer / Versteckperson'),
+          versteckpersonen: vps, anzeige: { art: normAnzeige(pr.indicationType), qualitaet: skalaAusText(F['Anzeigequalität']), qualitaetText: str(F['Anzeigequalität']) }, bruecke: en.rhBridge || null, taktikImport: en.taktikImport || null }),
+        bewertung: { ergebnis: vps.length ? (vps.every(v => v.gefunden) ? 'erfolgreich' : vps.some(v => v.gefunden) ? 'teilweise' : 'nicht_erfolgreich') : ergebnisAusText(F['Ergebnis']), hundeleistung: skalaAusText(F['Gesamtbewertung']), zusammenarbeit: skalaAusText(F['Zusammenarbeit / Führungsverhalten']), selbststaendigkeit: skalaAusText(F['Selbstständigkeit']),
+          zusatzskalen: [], gesamtbewertungText: str(F['Gesamtbewertung']), lernschritt: str(F['Lernschritt seit dem vorherigen Training']), naechsterSchritt: str(F['Nächster kleinster Trainingsschritt']), freitext: [str(F['Auffälligkeiten']) && 'Auffälligkeiten: ' + F['Auffälligkeiten'], str(F['Weitere relevante Beobachtungen']), str(F['Freitext / Notizen'])].filter(Boolean).join('\n') },
+        hundZustand: { vorher: str(F['Gesundheitszustand vor dem Training']), nachher: str(F['Zustand nach dem Training']), auffaelligkeiten: str(F['Ermüdungs-/Schmerzanzeichen']) },
+        kmHinRueck: num(F['Entfernung zur Heimatadresse (km)']) != null ? num(F['Entfernung zur Heimatadresse (km)']) * 2 : null,
+        quelle: { app: 'rh-trainingstagebuch-alt', appVersion: 'backup-v' + (b.backupVersion || ''), schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: 'rhs-trainingstagebuch backup v' + (b.backupVersion || '') },
+        roh: en, fieldMeta: { revision: 1, updatedAt: en.timestamp || b.savedAt } });
+      e.data.teamId = teamFor(sparte); out.records.push(e);
+    });
+    return out;
+  }
+
+  // Trainingstagebuch Mantrailing (Einzelsicherung 'rhs-mantrailing-training-backup' oder Gesamtsicherung 'rhs-mantrailing-tagebuch')
+  function fromTagebuchMT(b) {
+    const states = Array.isArray(b.entries) ? b.entries.map(x => x.state || x) : [b.state];
+    const out = buildPackage({ packageType: 'training', createdAt: b.exportedAt || nowIso(), source: { app: 'rh-mantrailing-tagebuch-alt', appVersion: 'v' + (b.version || '') } });
+    states.filter(isObj).forEach(S => {
+      const ch = S.chips || {};
+      const beginn = S.worked ? new Date(S.worked).toISOString() : (S.date ? new Date(S.date + 'T12:00').toISOString() : S.createdAt);
+      const gelegt = S.laid ? new Date(S.laid) : null; const alter = gelegt && S.worked ? Math.round((Date.parse(beginn) - gelegt.getTime()) / 6e4) : null;
+      const zs = [];
+      [['progStart', 'Start'], ['progSearch', 'Sucharbeit'], ['progFind', 'Fund'], ['crossConfidence', 'Kreuzungssicherheit'], ['focus', 'Konzentration'], ['drive', 'Finderwille']].forEach(([k, l]) => { const v = skalaAusText(S[k]); if (v != null) zs.push({ schluessel: k, wert: v, beschriftung: l }); });
+      const e = newEntry({ id: 'mtt-' + str(S.entryId || S.createdAt).replace(/\W/g, ''), typ: 'training', sparte: 'mantrailing', beginn,
+        ort: { name: str(S.place), lat: null, lon: null },
+        wetter: { tempC: num(S.wxTemp), windKmh: num(S.wxWind), niederschlag: str(S.wxPrecip) },
+        helfer: S.layer ? [{ kuerzel: kuerzel(S.layer), rolle: 'spurleger' }] : [],
+        nutzlast: { teamText: [str(S.handler), str(S.dog)].filter(Boolean).join('/'), trailart: { text: (ch.trailType || []).join(', ') }, trailAlterMin: alter, gelegtAm: S.laid || null, distanzGeplantM: num(S.plannedDistance),
+          umfeld: ch.env || [], verleitungen: ch.disturb || [], sucharbeit: ch.work || [], startverhalten: str(S.startQuality), handling: str(S.handling), negativAusschluss: { arbeit: str(S.negativeWork) }, endpool: { erkennbar: str(S.endPool), ausarbeitung: str(S.endPoolWork) }, personendifferenzierung: str(S.personDiff), belastungText: str(S.load),
+          anzeige: { art: normAnzeige(S.indication), qualitaet: null }, trackHund: trackPoints(S.track), trackSpurleger: trackPoints(S.referenceTrack), gpsEreignisse: (S.events || []).map(ev => ({ zeit: ev.at || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type), text: str(ev.note) })), funde: S.finds || [] },
+        bewertung: { ergebnis: S.finds && S.finds.length ? 'erfolgreich' : ergebnisAusText(S.result), hundeleistung: skalaAusText(S.rating), zusatzskalen: zs, naechsterSchritt: str(S.goal || S.nextGoal), trainerbeobachtung: str(S.trainer || S.trainerNote), freitext: [str(S.strengths) && 'Stärken: ' + S.strengths, str(S.notes)].filter(Boolean).join('\n') },
+        quelle: { app: 'rh-mantrailing-tagebuch-alt', schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: str(b.format) + ' v' + (b.version || 1) }, roh: S, fieldMeta: { revision: 1, updatedAt: S.updatedAt || S.diarySavedAt || nowIso() } });
+      out.records.push(e); teamAusText(out, e, 'mantrailing', { handler: S.handler, dogName: S.dog });
+    });
     return out;
   }
 

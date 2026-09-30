@@ -17,7 +17,7 @@ Beide nutzen dieselben Dateien `tagebuch-modul.js` und `rhs-exchange.js`.
 - Anzeigearten je Sparte inkl. Kennzeichnung „nicht prüfungsberechtigt“ (Trümmer: Sitzen an Fundstelle)
 - Tagebuch mit Spartenfilter, Bearbeiten und Löschen
 - Auswertung: Ampel Trainingsrückstand (Gelb ab 6, Rot ab 12 Wochen, einstellbar), Wochenübersicht, Kennzahlen je Sparte, Prüfungsreife-Vorstufe (3 Monate, ≥ 1/Woche, ≥ 80 % erfolgreich)
-- Einlesen aller Formate der App-Familie über rhs-exchange (v1/v2/v3, Flächen-, Mantrailing-, Trümmersuchassistent-Export); Sicherung wiederherstellen
+- Einlesen aller Formate der App-Familie über rhs-exchange: v1/v2/v3, Übergabe-Export und Protokoll-Sicherung der drei Assistenten, Flächen-Auswertungsbogen, Sicherungen der alten Tagebücher (Rettungshundearbeit v2.9.2, Mantrailing v2.0) inkl. Ort-Vorlagen; eigene Sicherung wiederherstellen
 - Export: Sicherung (JSON), Austauschpaket v3, CSV, GPX, Druck/PDF
 - Offline, ohne Server, Daten nur im Gerät (localStorage + IndexedDB-Spiegel)
 
@@ -25,7 +25,6 @@ Beide nutzen dieselben Dateien `tagebuch-modul.js` und `rhs-exchange.js`.
 - Prüfungsbausteine je Modul (kommen aus der Prüfungsordnungs-Konfiguration)
 - Excel-Auswertung, Trainingsempfehlung, Teamfortschritt-Delta, Wochen-Diagramm je Sparte
 - Fotos/Skizzen anzeigen, Karte für Tracks
-- Migration der beiden Alt-Tagebücher (braucht echte Exportdateien)
 - Impressum/Datenschutz einsetzen
 
 ## Schnittstelle für BARRY
