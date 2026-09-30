@@ -47,7 +47,7 @@
   const nowIso = () => new Date().toISOString();
   const uid = (p) => (p || 'id') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   const clone = v => JSON.parse(JSON.stringify(v));
-  const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const num = v => { if (v == null || v === '') return null; const n = Number(typeof v === 'string' ? v.replace(',', '.') : v); return Number.isFinite(n) ? n : null; };
   const str = v => (v == null ? '' : String(v));
   const kuerzel = v => {
     // "Anna Müller" -> "AM", "AM" -> "AM", "" -> ""
@@ -144,7 +144,8 @@
     if (obj.rhsFormat === EXCHANGE_FORMAT) return 'rhs-exchange-v' + (Number(obj.schemaVersion) || 1);
     if (obj.bridgeFormat === 'rhs-taktik-assistent-export') return 'flaeche-bridge';
     if (obj.bridgeFormat === 'rhs-mantrailing-assistent-export') return 'mantrailing-bridge';
-    if (obj.bridgeFormat === 'rhs-truemmersuchassistent-export') return 'truemmer-bridge';
+    if (obj.bridgeFormat === 'rhs-truemmersuchassistent-export' || /^rhs-truemmersuchassistent-back/.test(str(obj.format))) return 'truemmer-bridge';
+    if (/^rhs-flaechensuchassistent-eval/.test(str(obj.evaluationFormat))) return 'flaeche-eval';
     if (/^rhs-(mantrailing|truemmer\w*|flaeche\w*)-protokolle$/.test(str(obj.format)) && Array.isArray(obj.records)) return 'protokolle';
     return null;
   }
@@ -161,6 +162,7 @@
       case 'mantrailing-bridge': return fromMantrailing(obj);
       case 'truemmer-bridge': return fromTruemmer(obj);
       case 'protokolle': return fromProtokolle(obj);
+      case 'flaeche-eval': return fromFlaecheEval(obj);
     }
   }
 
@@ -223,6 +225,7 @@
     const teamId = b.rhsExchange && b.rhsExchange.teamId ? b.rhsExchange.teamId + ':flaeche' : '';
     const g = b.gebiet || {}, w = b.wetter || {}, a = b.auftrag || {};
     const e = newEntry({
+      id: b.exportId ? 'fl-' + str(b.exportId) : undefined,
       teamId, typ: b.mode === 'pruefung' ? 'pruefung' : (b.mode === 'einsatz' ? 'einsatz' : 'training'), sparte: 'flaeche',
       beginn: w.searchTime || b.exportedAt, ort: { name: str(g.placeName), lat: num(g.latitude), lon: num(g.longitude), gelaendeart: str(g.terrain) },
       wetter: { tempC: num(w.temperature), luftfeuchteProzent: num(w.humidity), windRichtungGrad: num(w.windDirectionDeg), windKategorie: str(w.windSpeedCategory),
@@ -249,6 +252,7 @@
     const S = b.state || {};
     const out = buildPackage({ packageType: S.mode === 'Einsatz' ? 'einsatz' : 'training', createdAt: b.createdAt, source: { app: 'rh-mantrailing-assistent', appVersion: str(b.appVersion || '') } });
     const e = newEntry({
+      id: 'mt-' + str(S.createdAt || b.createdAt).replace(/\W/g, ''),
       typ: S.mode === 'Einsatz' ? 'einsatz' : (S.mode === 'Prüfung' ? 'pruefung' : 'training'), sparte: 'mantrailing',
       beginn: S.searchStartAt || S.createdAt || b.createdAt,
       ort: { name: str(S.lkp || S.place), lat: null, lon: null },
@@ -277,41 +281,78 @@
       roh: b
     });
     out.records.push(e);
+    teamAusText(out, e, 'mantrailing', S.rhsExchange && S.rhsExchange.team);
     return out;
   }
 
   function fromTruemmer(b) {
-    const S = b.state || {}, P = b.protocol || {};
-    const out = buildPackage({ packageType: S.mode === 'Einsatz' ? 'einsatz' : 'training', createdAt: b.createdAt, source: { app: 'rh-truemmersuchassistent', appVersion: str(b.appVersion || '') } });
-    const marks = S.rubbleMarksGeo || S.rubbleMarks || {};
+    const S = b.state || {}, P = b.protocol || {}, ch = Object.assign({}, S.chips || {}, P.chips || {});
+    const modus = str(S.mode || P.mode);
+    const out = buildPackage({ packageType: /einsatz/i.test(modus) ? 'einsatz' : 'training', createdAt: b.createdAt, source: { app: 'rh-truemmersuchassistent', appVersion: str(b.appVersion || '') } });
+    const led = v => { const m = str(v).match(/^\s*([1-5])/); return m ? Number(m[1]) : null; };   // "3 – wechselhaft" -> 3
+    const beginn = P.startAt || S.searchStartAt || S.createdAt || b.createdAt;
+    const kpi = P.kpi || {}; const dauerS = num(kpi.dur);
+    const finds = (P.finds && P.finds.length ? P.finds : S.finds || []);
+    const marks = S.rubbleMarksGeo && (S.rubbleMarksGeo.actual || []).length ? S.rubbleMarksGeo : (S.rubbleMarks || {});
+    const prog = P.progress || {}; const zs = [];
+    [['start', 'Start', prog.start || S.progStart], ['search', 'Sucharbeit', prog.search], ['find', 'Fund/Anzeige', prog.find], ['micro', 'Mikrolokalisierung', P.microNum]].forEach(([k, l, v]) => { const n = led(v) ?? num(v); if (n != null && n >= 1 && n <= 5) zs.push({ schluessel: k, wert: n, beschriftung: l }); });
+    const teamText = str(S.team || P.team); const tx = (S.rhsExchange && S.rhsExchange.team) || {};
     const e = newEntry({
-      typ: S.mode === 'Einsatz' ? 'einsatz' : (S.mode === 'Prüfung' ? 'pruefung' : 'training'), sparte: 'truemmer',
-      beginn: S.searchStartAt || S.createdAt || b.createdAt,
-      ort: { name: str(S.site || P.ort), lat: null, lon: null },
-      wetter: S.weather || P.wetter || {},
+      id: P.id ? 'tr-' + P.id : 'tr-' + str(S.createdAt).replace(/\W/g, ''), typ: /einsatz/i.test(modus) ? 'einsatz' : /pr[üu]f/i.test(modus) ? 'pruefung' : 'training', sparte: 'truemmer',
+      beginn, ende: dauerS ? new Date(Date.parse(beginn) + dauerS * 1000).toISOString() : (kpi.end || null),
+      ort: { name: str(S.place || P.place), lat: num(S.weatherLat), lon: num(S.weatherLon) },
+      wetter: { tempC: num(S.wxTemp ?? (P.weather || {}).temp), luftfeuchteProzent: num(S.wxHumidity ?? (P.weather || {}).hum), windRichtungGrad: num(S.wxWindDir ?? (P.weather || {}).windDir), windKmh: num(S.wxWind ?? (P.weather || {}).wind), boeenKmh: num(S.wxGust ?? (P.weather || {}).gust), niederschlag: str(S.wxPrecip ?? (P.weather || {}).precip), wetterCode: num(S.wxCode), sonne: str(S.sunState || (P.tips || {}).sunState), tagesphase: str(S.dayPhase || (P.tips || {}).dayPhase), luftbewegung: str(S.airObs || (P.tips || {}).airObs), abgerufenAm: S.weatherAt || null },
       nutzlast: {
-        truemmerart: str(S.rubbleType || P.truemmerart), gebiet: S.searchAreaPolygon || null,
-        sektoren: (S.sectorList || []).map(s => ({ name: str(s.name || s), status: str(s.status) })),
-        suchphase: str(S.phase || P.suchphase),
-        sicherheitsCheckliste: S.safety || P.sicherheit || {}, gefahren: S.hazards || [],
-        trackHund: trackPoints(S.dogTrackGeo && S.dogTrackGeo.length ? S.dogTrackGeo : S.track), zeitTrack: S.timeTrack || [],
-        gpsEreignisse: (S.events || []).map(ev => ({ zeit: ev.t || ev.time || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type || ev.label), text: str(ev.note || ev.text) })),
-        versteckpersonen: (S.finds || []).map(f => ({ kuerzel: kuerzel(f.kuerzel || f.name || 'VP'), gefunden: f.found !== false,
-          anzeige: { art: normAnzeige(f.indication) || 'verbeller', qualitaet: num(f.quality), pruefungsberechtigt: (normAnzeige(f.indication) || 'verbeller') === 'verbeller' },
-          positionen: { hfVermutung: f.estimate || null, hundTatsaechlich: f.dogActual || null, vpTatsaechlich: f.actual || null },
-          geruchsaustritt: f.scentExit || [], vpLage: str(f.vpNote), zeitBisFundMin: num(f.minutes) })),
+        teamText, personName: str(tx.handler), hundName: str(tx.dogName),
+        truemmerart: ch.structure || [], gefahren: ch.hazards || [], suchphase: ch.pattern || [], geruchsaustritt: ch.scent || [], sicherheitsCheckliste: ch.safetyCheck || [], geruchsweg: ch.scentPath || [],
+        sicherheitNotiz: str(P.safety), auftrag: str(P.brief), sektorenText: str(P.sectorsText), geruchsNotiz: str(P.scentNotes), sektoren: (P.sectors && P.sectors.length ? P.sectors : S.sectorList || []).map(x => typeof x === 'string' ? { name: x } : x),
+        gebiet: S.searchAreaPolygon || null,
+        vpZeitImVersteckH: str(S.vpHours || (P.tips || {}).vpHours), suchmodus: str(S.searchMode || (P.ratings || {}).searchMode), selbststaendig: str(S.independent || (P.ratings || {}).independent), mikrolokalisierung: str(S.micro || (P.ratings || {}).micro), sichtkontakt: str((P.ratings || {}).visualContact), bewegung: str((P.ratings || {}).movement), verbellen: str((P.ratings || {}).bark),
+        trackHund: trackPoints(S.dogTrackGeo && S.dogTrackGeo.length ? S.dogTrackGeo : S.track), zeitTrack: S.timeTrack || [], trackPunkte: num(kpi.pts),
+        gpsEreignisse: (S.events && S.events.length ? S.events : P.events || []).map(ev => ({ zeit: ev.at || ev.t || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type), text: str(ev.note) })),
+        versteckpersonen: finds.map((f, i) => ({ kuerzel: kuerzel(f.kuerzel || f.name || ('VP' + (i + 1))), gefunden: /gefunden/i.test(str(f.result)) || f.found === true, ergebnisText: str(f.result), markierung: str(f.marking), sektor: str(f.sector), quelle: str(f.source), zweithund: str(f.secondDog), zeit: f.at || null,
+          anzeige: { art: /sitz/i.test(str(f.bark)) ? 'sitzen_fundstelle' : 'verbeller', qualitaet: null, pruefungsberechtigt: !/sitz/i.test(str(f.bark)), verbellenText: str(f.bark) },
+          position: f.lat != null ? { lat: num(f.lat), lon: num(f.lon), genauigkeitM: num(f.acc) } : null, positionen: { hfVermutung: f.estimate || null, hundTatsaechlich: f.dogActual || null, vpTatsaechlich: f.actual || null }, verschuettungTiefe: str(f.depth), notiz: str(f.note) })),
         fundlagenGesamt: { hfVermutung: marks.estimate || [], hundTatsaechlich: marks.dogActual || [], vpTatsaechlich: marks.actual || [] },
-        ruhephasen: (S.events || []).filter(ev => /ruhe/i.test(str(ev.type || ev.label))),
+        kennzahlen: { dauerS, zeitBisErstemFundS: num(kpi.tFirst), funde: num(kpi.finds), vp: num(kpi.vp), fehlanzeigen: num(kpi.fehl), sektorenNegativ: num(kpi.sektNeg), sektorenGesamt: num(kpi.sektAll) },
+        analyse: P.analysis || null, protokollFelder: Object.assign({}, S.proto || {}, P.proto || {}), pruefung: P.exam || null,
         skizze: S.rubbleDrawing && S.rubbleDrawing.length ? { art: 'skizze', format: 'strokes', daten: S.rubbleDrawing, breiteM: num(S.mapWidthM) } : null,
-        meldungEL: P.meldung || null, protokoll: P
+        ruhephasen: (S.events || []).filter(ev => /ruhe/i.test(str(ev.type)))
       },
-      bewertung: { ergebnis: P.ergebnis === true || /erfolg/i.test(str(P.ergebnis)) ? 'erfolgreich' : 'offen', freitext: str(P.notizen || P.bemerkung) },
-      anhaenge: (S.photos || []).map(ph => ({ id: ph.id || uid('a'), art: 'foto', format: 'jpg', daten: ph.data || null, aufnahmeort: ph.pos || null, notiz: str(ph.note) })),
-      quelle: { app: 'rh-truemmersuchassistent', schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: 'rhs-truemmersuchassistent-export v' + (b.schemaVersion || 1) },
-      roh: b
+      bewertung: { ergebnis: finds.some(f => /gefunden/i.test(str(f.result))) ? 'erfolgreich' : /abgebrochen/i.test(str((P.analysis || {}).findResult)) ? 'abgebrochen' : 'offen', hundeleistung: num(P.ratingNum), zusatzskalen: zs,
+        naechsterSchritt: str((P.debrief || {}).next), freitext: [str((P.debrief || {}).good) && 'Gut: ' + P.debrief.good, str((P.debrief || {}).debrief), str((P.proto || S.proto || {}).rating) && 'Gesamteindruck: ' + (P.proto || S.proto).rating, str((P.proto || S.proto || {}).load) && 'Belastung: ' + (P.proto || S.proto).load].filter(Boolean).join('\n') },
+      anhaenge: (S.photos && S.photos.length ? S.photos : P.photos || []).map(ph => ({ id: ph.id || uid('a'), art: 'foto', format: 'jpg', daten: ph.data || null, aufnahmeort: ph.pos || (ph.lat != null ? { lat: num(ph.lat), lon: num(ph.lon) } : null), notiz: str(ph.note) })),
+      quelle: { app: 'rh-truemmersuchassistent', appVersion: str(b.appVersion || ''), schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: str(b.bridgeFormat || b.format) + ' v' + (b.schemaVersion || b.version || 1) },
+      roh: b, fieldMeta: { revision: 1, updatedAt: P.savedAt || S.updatedAt || nowIso() }
     });
     out.records.push(e);
+    teamAusText(out, e, 'truemmer', tx);
     return out;
+  }
+
+  // Auswertungsdatei des Flächensuchassistenten (nur Bewertung, keine Suchdaten)
+  function fromFlaecheEval(b) {
+    const out = buildPackage({ packageType: b.mode === 'einsatz' ? 'einsatz' : 'training', createdAt: b.evaluatedAt, source: { app: 'rh-flaechensuchassistent', appVersion: str(b.appVersion || '') } });
+    const zs = []; const lab = { evalHandlerBriefing: 'Einweisung', evalHandlerTactics: 'Taktik', evalHandlerCoverage: 'Abdeckung (HF)', evalHandlerDogReading: 'Hund lesen', evalHandlerCommunication: 'Kommunikation', evalHandlerSafety: 'Sicherheit', evalHandlerInquiry: 'Erkundung', evalHandlerReport: 'Meldung', evalDogIndependence: 'Selbstständigkeit', evalDogWindUse: 'Windnutzung', evalDogCoverage: 'Abdeckung (Hund)', evalDogMotivation: 'Motivation', evalDogManageability: 'Führbarkeit', evalDogIndication: 'Anzeige', evalDogPersonBehavior: 'Verhalten an der Person', evalDogEndurance: 'Ausdauer' };
+    Object.entries(Object.assign({}, (b.handler || {}).ratings || {}, (b.dog || {}).ratings || {})).forEach(([k, v]) => { const n = num(v); if (n != null) zs.push({ schluessel: k, wert: n, beschriftung: lab[k] || k }); });
+    const r = b.result || {};
+    const e = newEntry({ id: 'fl-' + str(b.exportId) + '-auswertung', typ: b.mode === 'einsatz' ? 'einsatz' : b.mode === 'pruefung' ? 'pruefung' : 'training', sparte: 'flaeche', beginn: b.evaluatedAt,
+      nutzlast: { nurAuswertung: true, exportId: str(b.exportId), personenGeplant: num(r.plannedPersons), fundeDokumentiert: num(r.documentedFinds), ergebnisText: str(r.outcomeLabel), einflussfaktoren: b.factors || [], planNutzung: (b.planUse || {}).label || null, bewerterRolle: str(b.evaluatorRole) },
+      bewertung: { ergebnis: r.outcome === 'success' ? 'erfolgreich' : r.outcome === 'partial' ? 'teilweise' : r.outcome === 'fail' ? 'nicht_erfolgreich' : 'offen', fuehrerleistung: (b.handler || {}).average != null ? Math.round(b.handler.average) : null, hundeleistung: (b.dog || {}).average != null ? Math.round(b.dog.average) : null, zusatzskalen: zs, naechsterSchritt: str(b.nextFocus), freitext: [str(b.strengths) && 'Stärken: ' + b.strengths, str(b.notes)].filter(Boolean).join('\n') },
+      quelle: { app: 'rh-flaechensuchassistent', schemaVersion: SCHEMA, importiertAm: nowIso(), brueckenFormat: str(b.evaluationFormat) + ' v' + (b.evaluationVersion || 1) }, roh: b, fieldMeta: { revision: 1, updatedAt: b.evaluatedAt } });
+    out.records.push(e); return out;
+  }
+
+  // Person/Hund/Team aus Freitext "Name/Hund" oder rhsExchange.team ableiten (Standalone-Import)
+  function teamAusText(out, e, sparte, tx) {
+    const n = e.data.nutzlast; let pn = str(tx && tx.handler) || n.personName || '', hn = str(tx && tx.dogName) || n.hundName || '';
+    if (!hn && n.teamText) { const tp = n.teamText.split(/\s*[\/|·]\s*/); if (tp.length > 1) { pn = pn || tp[0]; hn = tp.slice(1).join(' / '); } else hn = tp[0]; }
+    if (!hn) return;
+    const pid = 'p-' + (kuerzel(pn || 'HF') || 'hf').toLowerCase(), hid = 'h-' + hn.toLowerCase().replace(/\W+/g, '-');
+    if (!out.personen.some(x => x.id === pid)) out.personen.push({ id: pid, name: pn, rolle: ['hundefuehrer'] });
+    if (!out.hunde.some(x => x.id === hid)) out.hunde.push({ id: hid, rufname: hn, geburtsdatum: str(tx && tx.dogBirthDate) || null, rasse: str(tx && tx.dogBreed), sparten: [sparte] });
+    const tid = pid + ':' + hid + ':' + sparte; if (!out.teams.some(x => x.id === tid)) out.teams.push({ id: tid, personId: pid, hundId: hid, sparte, status: 'in_ausbildung', anzeigeart: normAnzeige(tx && tx.indicationType) });
+    e.data.teamId = tid; n.personName = pn; n.hundName = hn;
   }
 
   // Protokoll-Sicherung der Assistenten („Protokolle sichern (JSON)“): format 'rhs-<sparte>-protokolle', records[] je Vorgang
@@ -321,7 +362,6 @@
     const out = buildPackage({ packageType: 'training', createdAt: b.exportedAt, source: { app, appVersion: str(b.appVersion || '') } });
     const skala = v => { const n = num(v); return n != null && n >= 1 && n <= 5 ? n : null; };
     (b.records || []).forEach(r => {
-      const teamText = str(r.team); const tp = teamText.split(/\s*[\/|·]\s*/);
       const beginn = r.date ? new Date(r.date).toISOString() : (r.savedAt || b.exportedAt);
       const dauerS = num(r.durationSec);
       const zs = [];
@@ -335,8 +375,8 @@
         ort: { name: str(r.place || r.lkp || r.startEnv), lat: null, lon: null },
         wetter: { tempC: num(r.temp), windKmh: num(r.wind), windRichtung: isNaN(Number(r.wind)) ? str(r.wind) : '', niederschlag: str(r.precip) },
         helfer: r.layer ? [{ kuerzel: kuerzel(r.layer), rolle: 'spurleger' }] : [],
-        nutzlast: Object.assign({
-          teamText, personName: tp[0] || '', hundName: tp.slice(1).join(' / ') || '',
+        nutzlast: {
+          teamText: str(r.team),
           trailAlterMin: num(r.trailAgeH) != null ? Math.round(num(r.trailAgeH) * 60) : null, gelegtAm: r.laidAt || null,
           trailart: { text: str(r.ptype) }, distanzGeplantM: num(r.distPlanned),
           umfeldStart: str(r.startEnv), umfeldSegmente: r.envRoute || [], verleitungen: [str(r.traffic), str(r.lure)].filter(Boolean),
@@ -346,9 +386,9 @@
           gefunden: erg === 'erfolgreich', anzeige: { art: normAnzeige(r.indication), qualitaet: null },
           trailLaengeM: num(r.refLenM) || num(r.hfLenM), streckeHFM: num(r.hfLenM), streckeHundM: num(r.dogLenM), streckeSpurlegerM: num(r.refLenM),
           abweichungMittelM: num(r.devAvgM), abweichungMaxM: num(r.devMaxM), ereignisZaehler: r.counts || {},
-          gpsEreignisse: (r.events || []).map(ev => ({ zeit: ev.t || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type), text: str(ev.note) })),
+          gpsEreignisse: (r.events || []).map(ev => ({ zeit: ev.t || ev.at || null, lat: num(ev.lat), lon: num(ev.lon), typ: str(ev.type), text: str(ev.note) })),
           wetterTipps: r.wxTips || null
-        }, sparte === 'truemmer' ? { protokollRoh: true } : {}),
+        },
         bewertung: { ergebnis: erg, hundeleistung: skala(r.rating), zusatzskalen: zs, naechsterSchritt: str(r.goal), trainerbeobachtung: str(r.trainer),
           freitext: [str(r.strengths) && 'Stärken: ' + r.strengths, str(r.debrief), str(r.notes)].filter(Boolean).join('\n') },
         anhaenge: r.thumb ? [{ id: r.id + '-thumb', art: 'skizze', format: 'png', daten: r.thumb, notiz: 'Vorschaubild Track' }] : [],
@@ -357,9 +397,7 @@
       });
       out.records.push(e);
     });
-    // Person/Hund/Team aus "Name/Hund"
-    const seen = {};
-    out.records.forEach(e => { const n = e.data.nutzlast; if (!n.hundName) return; const key = n.personName + '|' + n.hundName; if (!seen[key]) { const pid = 'p-' + kuerzel(n.personName || 'HF').toLowerCase() + '-' + Object.keys(seen).length, hid = 'h-' + n.hundName.toLowerCase().replace(/\W+/g, '-'); seen[key] = { pid, hid }; if (!out.personen.some(x => x.id === pid)) out.personen.push({ id: pid, name: n.personName, rolle: ['hundefuehrer'] }); if (!out.hunde.some(x => x.id === hid)) out.hunde.push({ id: hid, rufname: n.hundName, sparten: [sparte] }); out.teams.push({ id: pid + ':' + hid + ':' + sparte, personId: pid, hundId: hid, sparte, status: 'in_ausbildung' }); } e.data.teamId = seen[key].pid + ':' + seen[key].hid + ':' + sparte; });
+    out.records.forEach(e => teamAusText(out, e, sparte, null));
     return out;
   }
 
