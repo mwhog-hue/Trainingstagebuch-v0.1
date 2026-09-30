@@ -109,15 +109,173 @@
   const ANZ_LABEL = { verbeller: 'Verbeller', bringsel: 'Bringsel', freiverweiser: 'Freiverweiser', rueckverweiser: 'Rückverweiser', anspringen: 'Anspringen', anstupsen: 'Anstupsen', sitz_platz: 'Sitz/Platz bei Person', verbellen: 'Verbellen', sitzen_fundstelle: 'Sitzen an Fundstelle (nicht prüfungsberechtigt)' };
   const ERG_LABEL = { offen: 'offen', erfolgreich: 'erfolgreich', teilweise: 'teilweise', nicht_erfolgreich: 'nicht erfolgreich', abgebrochen: 'abgebrochen' };
 
+  const CSS = `.tbm{--tbm:1;
+  --bg:#F7F8F5;--paper:#FFFFFF;--ink:#1F2A24;--muted:#5D6B62;--line:#D9DED8;
+  --green:#2F5D3A;--green-soft:#E3ECDF;--moss:#8AA86B;--amber:#C9932B;--amber-soft:#F6EBD2;--red:#B4432D;--red-soft:#F5DFD9;
+  --r:12px;--tap:44px;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);
+}@media(prefers-color-scheme:dark){html:not([data-theme=light]) .tbm{--bg:#141816;--paper:#1C221E;--ink:#E8ECE7;--muted:#9AA79E;--line:#2C352F;--green:#7FB08A;--green-soft:#22301F;--amber-soft:#3A2F14;--red-soft:#3D1E18}}.tbm[data-theme=dark],html[data-theme=dark] .tbm{--bg:#141816;--paper:#1C221E;--ink:#E8ECE7;--muted:#9AA79E;--line:#2C352F;--green:#7FB08A;--green-soft:#22301F;--amber-soft:#3A2F14;--red-soft:#3D1E18}.tbm *{box-sizing:inherit}.tbm, .tbm{height:100%;margin:0;background:var(--bg);color:var(--ink)}.tbm{display:flex;flex-direction:column}.tbm header{padding:14px 16px 8px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}.tbm header h1{font-size:1.15rem;margin:0;font-weight:650;letter-spacing:-.01em}.tbm header h1 small{font-weight:400;color:var(--muted);font-size:.8rem;margin-left:6px}.tbm #teamchip{font-size:.85rem;color:var(--green);background:var(--green-soft);padding:6px 10px;border-radius:999px;border:0;font:inherit;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tbm main{flex:1;overflow:auto;padding:0 16px calc(84px + env(safe-area-inset-bottom,0px))}.tbm nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--paper);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}.tbm nav.tabs button{flex:1;min-height:58px;border:0;background:none;font:inherit;font-size:.72rem;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:8px}.tbm nav.tabs button span.i{font-size:1.25rem;line-height:1}.tbm nav.tabs button[aria-current=page]{color:var(--green);font-weight:650}.tbm section.view{display:none}.tbm section.view.active{display:block}.tbm h2{font-size:1.05rem;margin:18px 0 8px;font-weight:650}.tbm h3{font-size:.95rem;margin:14px 0 6px;font-weight:650;color:var(--muted)}.tbm p.lead{color:var(--muted);margin:0 0 12px}.tbm .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:10px 0}.tbm details.card{padding:0}.tbm details.card>summary{padding:12px 14px;cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}.tbm details.card>summary::after{content:"+";color:var(--muted);font-weight:400}.tbm details[open].card>summary::after{content:"–"}.tbm details.card>div{padding:0 14px 12px}.tbm label.f{display:block;margin:10px 0}.tbm label.f>span{display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px}.tbm input, .tbm select, .tbm textarea{width:100%;min-height:var(--tap);font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}.tbm textarea{min-height:72px;resize:vertical}.tbm input[type=checkbox]{width:auto;min-height:auto;transform:scale(1.3);margin-right:8px}.tbm .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.tbm .chips{display:flex;flex-wrap:wrap;gap:6px}.tbm .chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:.88rem;min-height:36px}.tbm .chip.on{background:var(--green);border-color:var(--green);color:#fff}.tbm .skala{display:flex;gap:6px}.tbm .skala button{flex:1;min-height:var(--tap);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;font:inherit;font-weight:600}.tbm .skala button.on{background:var(--green);color:#fff;border-color:var(--green)}.tbm button.primary{width:100%;min-height:52px;border:0;border-radius:var(--r);background:var(--green);color:#fff;font:inherit;font-weight:650;font-size:1rem;margin:14px 0 6px}.tbm button.ghost{min-height:var(--tap);border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;padding:0 14px}.tbm button.ghost.danger{color:var(--red);border-color:var(--red)}.tbm .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.tbm .big{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tbm .big button{min-height:64px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper);color:var(--ink);font:inherit;font-weight:600;font-size:.95rem}.tbm .big button.on{background:var(--green);color:#fff;border-color:var(--green)}.tbm .entry{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.tbm .entry:last-child{border-bottom:0}.tbm .entry b{display:block}.tbm .entry small{color:var(--muted)}.tbm .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}.tbm .dot.g{background:var(--green)}.tbm .dot.a{background:var(--amber)}.tbm .dot.r{background:var(--red)}.tbm .dot.n{background:var(--line)}.tbm .ampel{padding:10px 12px;border-radius:8px;margin:6px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}.tbm .ampel small{text-align:right;flex-shrink:0;max-width:48%}.tbm .ampel.g{background:var(--green-soft)}.tbm .ampel.a{background:var(--amber-soft)}.tbm .ampel.r{background:var(--red-soft)}.tbm .bars{display:flex;align-items:flex-end;gap:4px;height:90px;border-bottom:1px solid var(--line);padding-bottom:2px}.tbm .bars div{flex:1;background:var(--moss);border-radius:3px 3px 0 0;position:relative;min-height:2px}.tbm .bars div span{position:absolute;top:100%;left:0;right:0;text-align:center;font-size:.65rem;color:var(--muted);margin-top:3px}.tbm .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}.tbm .toast.show{opacity:1}.tbm .rep{border-left:3px solid var(--moss);padding-left:10px;margin:8px 0}.tbm .hint{font-size:.82rem;color:var(--muted)}.tbm .erg{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--green-soft);font-size:.9rem}.tbm .erg.bad{background:var(--red-soft)}.tbm .erg b{display:block}.tbm .empty{text-align:center;color:var(--muted);padding:26px 10px}.tbm table{width:100%;border-collapse:collapse;font-size:.9rem}.tbm td, .tbm th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}.tbm kbd{font-family:inherit;background:var(--green-soft);padding:1px 6px;border-radius:4px}.tbm :focus-visible{outline:2px solid var(--amber);outline-offset:2px}@media(prefers-reduced-motion:reduce){.tbm *{transition:none!important}}
+.tbm{display:flex;flex-direction:column;min-height:100%;font-size:16px;line-height:1.4;color:var(--ink);background:var(--bg)}
+.tbm.standalone{height:100%}
+.tbm.standalone header,.tbm.standalone main,.tbm.standalone nav.tabs{}
+.tbm.eingebettet{min-height:auto;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tbm.eingebettet main{overflow:visible;padding-bottom:16px}
+.tbm.eingebettet nav.tabs{position:sticky;top:0;bottom:auto;border-top:0;border-bottom:1px solid var(--line);z-index:2;padding-bottom:0}
+.tbm.eingebettet header{display:none}
+.tbm.eingebettet .toast{position:sticky;bottom:12px;left:auto;transform:none;margin:0 auto;display:table}
+`;
+  const MARKUP = `<header>
+  <h1>Trainingstagebuch <small>v0.1</small></h1>
+  <button id="teamchip" title="Team wechseln">Kein Team</button>
+</header>
+<main>
+
+<!-- ===== Start ===== -->
+<section class="view active" id="v-start">
+  <p class="lead" id="startlead">Willkommen. Lege zuerst Hund und Team an, dann kannst du Trainings erfassen.</p>
+  <div id="startampel"></div>
+  <h2>Zuletzt</h2>
+  <div class="card" id="startletzte"></div>
+  <button class="primary" data-go="erfassen">Training erfassen</button>
+</section>
+
+<!-- ===== Erfassen ===== -->
+<section class="view" id="v-erfassen">
+  <h2 id="erfassen-titel">Training erfassen</h2>
+  <div class="card">
+    <div class="row"><label class="f"><span>Hund</span><select id="e-hund"></select></label><label class="f" id="e-person-wrap"><span>Geführt von</span><select id="e-person"></select></label></div>
+    <div class="row">
+      <label class="f"><span>Art</span><select id="e-typ"><option value="training">Training</option><option value="pruefung">Prüfung</option><option value="einsatz">Einsatz</option><option value="vorfuehrung">Vorführung</option><option value="sonstiges">Sonstiges</option></select></label>
+      <label class="f"><span>Beginn</span><input type="datetime-local" id="e-beginn"></label>
+    </div>
+    <label class="f"><span>Dauer (Minuten)</span><input type="number" id="e-dauer" inputmode="numeric" min="0"></label>
+  </div>
+  <h3>Sparte</h3>
+  <div class="big" id="e-sparten"></div>
+  <details class="card" open><summary>Ort und Wetter</summary><div>
+    <label class="f"><span>Ort</span><input id="e-ort" list="ortliste" placeholder="Trainingsgelände"><datalist id="ortliste"></datalist></label>
+    <div class="btnrow"><button class="ghost" id="e-gps" type="button">Position übernehmen</button><button class="ghost" id="e-ortmerken" type="button">Ort als Vorlage merken</button></div>
+    <div class="row">
+      <label class="f"><span>Temperatur °C</span><input type="number" id="e-temp" inputmode="decimal"></label>
+      <label class="f"><span>Wind km/h</span><input type="number" id="e-wind" inputmode="decimal"></label>
+    </div>
+    <div class="row">
+      <label class="f"><span>Windrichtung</span><select id="e-windr"><option value="">–</option><option>N</option><option>NO</option><option>O</option><option>SO</option><option>S</option><option>SW</option><option>W</option><option>NW</option><option>variabel</option></select></label>
+      <label class="f"><span>Niederschlag</span><select id="e-nied"><option value="">–</option><option>trocken</option><option>Nieselregen</option><option>Regen</option><option>Schnee</option><option>Nebel</option></select></label>
+    </div>
+    <label class="f"><span>Entfernung von zu Hause (km, Hin- und Rückfahrt)</span><input type="number" id="e-km" inputmode="decimal"></label>
+  </div></details>
+  <div id="e-sparte-felder"></div>
+  <details class="card"><summary>Helfer und Versteckpersonen</summary><div>
+    <p class="hint">Nur Kürzel, keine Namen – das ist in der ganzen App-Familie so festgelegt.</p>
+    <div id="e-vps"></div>
+    <button class="ghost" type="button" id="e-vp-add">+ Versteckperson / Spurleger</button>
+    <label class="f"><span>Ausbilder/-in (Kürzel)</span><input id="e-ausbilder" maxlength="4"></label>
+  </div></details>
+  <details class="card" open><summary>Bewertung</summary><div>
+    <label class="f"><span>Ergebnis</span><select id="e-ergebnis"><option value="offen">offen</option><option value="erfolgreich">erfolgreich</option><option value="teilweise">teilweise</option><option value="nicht_erfolgreich">nicht erfolgreich</option><option value="abgebrochen">abgebrochen</option></select></label>
+    <div id="e-skalen"></div>
+    <label class="f"><span>Nächster kleinster Trainingsschritt</span><input id="e-naechster"></label>
+    <label class="f"><span>Beobachtung / Freitext</span><textarea id="e-freitext"></textarea></label>
+  </div></details>
+  <details class="card"><summary>Hund vor und nach dem Training</summary><div>
+    <label class="f"><span>Zustand vorher</span><input id="e-hv"></label>
+    <label class="f"><span>Zustand nachher</span><input id="e-hn"></label>
+    <label class="f"><span>Auffälligkeiten (Ermüdung, Schmerz, Pfoten)</span><input id="e-ha"></label>
+  </div></details>
+  <button class="primary" id="e-save">Eintrag speichern</button>
+  <div class="btnrow"><button class="ghost" id="e-cancel" type="button">Abbrechen</button><button class="ghost danger" id="e-delete" type="button" hidden>Eintrag löschen</button></div>
+</section>
+
+<!-- ===== Tagebuch ===== -->
+<section class="view" id="v-tagebuch">
+  <h2>Tagebuch</h2>
+  <div class="chips" id="t-filter"></div>
+  <div class="card" id="t-liste"></div>
+</section>
+
+<!-- ===== Auswertung ===== -->
+<section class="view" id="v-auswertung">
+  <h2>Auswertung</h2>
+  <div id="a-ampel"></div>
+  <details class="card" open><summary>Trainings je Woche (12 Wochen)</summary><div><div class="bars" id="a-wochen"></div><p class="hint" id="a-wochen-txt"></p></div></details>
+  <details class="card" open><summary>Je Sparte</summary><div><table id="a-sparten"></table></div></details>
+  <details class="card"><summary>Prüfungsreife</summary><div id="a-reife"></div></details>
+</section>
+
+<!-- ===== Team ===== -->
+<section class="view" id="v-team">
+  <h2>Personen, Hunde und Teams</h2>
+  <p class="lead">Hund einmal anlegen und Sparten ankreuzen – die Teams je Sparte entstehen automatisch. Beim Erfassen wählst du nur Hund und Sparte.</p>
+  <div class="card">
+    <h3>Hundeführer/-innen</h3>
+    <div id="personenliste"></div>
+    <div class="row"><label class="f"><span>Name</span><input id="p-name" placeholder="Anzeigename"></label><label class="f"><span>Organisation (optional)</span><input id="p-org" placeholder="z. B. Staffel"></label></div>
+    <button class="ghost" id="p-save" type="button">+ Person hinzufügen</button>
+    <p class="hint">Mehrere Personen sind sinnvoll, wenn ein Hund von zwei Führern gearbeitet wird oder sich zwei Personen ein Gerät teilen.</p>
+  </div>
+  <div id="hundeliste"></div>
+  <details class="card"><summary>Hund hinzufügen</summary><div>
+    <label class="f"><span>Rufname</span><input id="h-name"></label>
+    <div class="row"><label class="f"><span>Geboren</span><input type="date" id="h-geb"></label><label class="f"><span>Rasse</span><input id="h-rasse"></label></div>
+    <span class="hint">Sparten</span><div class="chips" id="h-sparten"></div>
+    <button class="primary" id="h-save">Hund und Teams anlegen</button>
+  </div></details>
+</section>
+
+<!-- ===== Daten ===== -->
+<section class="view" id="v-daten">
+  <h2>Daten</h2>
+  <details class="card" open><summary>Einlesen</summary><div>
+    <p class="hint">Nimmt JSON-Dateien der RH-App-Familie an: Übergabe-Export und Protokoll-Sicherung der Assistenten, Team-Austausch (rhs-exchange), Sicherungen dieses Tagebuchs. CSV-Tabellen sind nur zum Lesen in Excel gedacht und werden nicht eingelesen.</p>
+    <input type="file" id="d-import" accept=".json,application/json" multiple>
+    <div id="d-import-erg" hidden></div>
+  </div></details>
+  <details class="card" open><summary>Sichern und weitergeben</summary><div>
+    <div class="btnrow">
+      <button class="ghost" id="d-backup">Vollständige Sicherung (JSON)</button>
+      <button class="ghost" id="d-v3">Austauschpaket rhs-exchange v3</button>
+      <button class="ghost" id="d-csv">Tabelle (CSV für Excel)</button>
+      <button class="ghost" id="d-gpx">Tracks als GPX</button>
+      <button class="ghost" id="d-print">Drucken / PDF</button>
+    </div>
+    <p class="hint">Sicherung: alles inkl. Heimatpunkt, nur für dich. Austauschpaket: ohne Heimatpunkt, ohne Chipnummer, Helfer nur als Kürzel.</p>
+  </div></details>
+  <details class="card"><summary>Einstellungen</summary><div>
+    <label class="f"><span>Darstellung</span><select id="d-theme"><option value="">System</option><option value="light">Hell</option><option value="dark">Dunkel</option></select></label>
+    <label class="f"><span>Ampel Gelb ab (Wochen ohne Training)</span><input type="number" id="d-gelb" value="6"></label>
+    <label class="f"><span>Ampel Rot ab (Wochen)</span><input type="number" id="d-rot" value="12"></label>
+    <div class="btnrow"><button class="ghost danger" id="d-reset">Alle Daten löschen</button></div>
+  </div></details>
+  <details class="card"><summary>Hilfe, Impressum, Datenschutz</summary><div id="d-hilfe">
+    <p>Das Tagebuch läuft vollständig offline auf diesem Gerät. Es werden keine Daten übertragen. Zum Installieren: im Browser „Zum Startbildschirm hinzufügen“.</p>
+    <p>Datenformat: <kbd>rhs-exchange v3</kbd> – offen dokumentiert, damit auch andere Apps es lesen können.</p>
+    <p class="hint">Impressum und Datenschutzerklärung: werden vor Veröffentlichung eingesetzt.</p>
+  </div></details>
+</section>
+</main>
+<nav class="tabs">
+  <button data-go="start" aria-current="page"><span class="i">⌂</span>Start</button>
+  <button data-go="erfassen"><span class="i">＋</span>Erfassen</button>
+  <button data-go="tagebuch"><span class="i">≡</span>Tagebuch</button>
+  <button data-go="auswertung"><span class="i">◔</span>Auswertung</button>
+  <button data-go="team"><span class="i">🐾</span>Team</button>
+  <button data-go="daten"><span class="i">⇅</span>Daten</button>
+</nav>
+<div class="toast" id="toast"></div>`;
+  function markupEinsetzen(container, modus) { if (!document.getElementById('tbm-style')) { const st = document.createElement('style'); st.id = 'tbm-style'; st.textContent = CSS; document.head.appendChild(st); } container.classList.add('tbm', modus === 'barry' ? 'eingebettet' : 'standalone'); if (!container.querySelector('main')) { container.innerHTML = MARKUP; if (modus === 'barry') { const nav = container.querySelector('nav.tabs'); container.insertBefore(nav, container.querySelector('main')); } } }
+
   /* ---------- Zustand ---------- */
   let state, opts = {};
   function leer() { const p = { id: 'p-' + RHS.hilfen.uid().slice(3), name: '', organisation: '' }; return { version: 2, person: p, personen: [p], hunde: [], teams: [], records: [], orte: [], heimatpunkt: null, einstellungen: { gelb: 6, rot: 12, theme: '' } }; }
   function migriere(s) { if (!s.personen) s.personen = [s.person]; if (!s.person) s.person = s.personen[0]; s.version = 2; return s; }
   function laden() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.version) return migriere(s); } catch (e) { } return leer(); }
   const person = id => state.personen.find(p => p.id === id);
-  function speichern() { try { localStorage.setItem(KEY, JSON.stringify(state)); idbMirror(); } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message); } if (opts.onChange) opts.onChange(state); document.dispatchEvent(new CustomEvent('tagebuch:changed')); }
+  function speichern() { if (!opts.state) { try { localStorage.setItem(KEY, JSON.stringify(state)); idbMirror(); } catch (e) { toast('Speichern fehlgeschlagen: ' + e.message); } } if (opts.onChange) opts.onChange(state); document.dispatchEvent(new CustomEvent('tagebuch:changed')); }
   function idbMirror() { try { const r = indexedDB.open('rhs-tagebuch', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => { const tx = r.result.transaction('kv', 'readwrite'); tx.objectStore('kv').put({ t: Date.now(), state }, 'state'); }; } catch (e) { } }
-  const eintraege = () => state.records.filter(r => r.type === 'entry');
+  const sichtbarerHund = h => !opts.hundFilter || opts.hundFilter(h);
+  const eintraege = () => state.records.filter(r => r.type === 'entry' && (!opts.hundFilter || sichtbarerHund(hund((team(r.data.teamId) || {}).hundId) || {})));
   const team = id => state.teams.find(t => t.id === id);
   const hund = id => state.hunde.find(h => h.id === id);
   const teamLabel = t => { if (!t) return '–'; const mehrere = state.personen.length > 1; return (hund(t.hundId) || {}).rufname + (mehrere ? ' (' + ((person(t.personId) || {}).name || '?') + ')' : '') + ' · ' + (SPARTEN[t.sparte] || {}).label; };
@@ -190,7 +348,7 @@
     const id = prefix + f.k;
     if (f.t === 'chips') return $$(`[data-chips="${id}"] .chip.on`, root).map(b => b.dataset.v);
     if (f.t === 'skala') { const b = $(`[data-skala="${id}"] button.on`, root); return b ? Number(b.dataset.v) : null; }
-    const el = document.getElementById(id); if (!el) return null;
+    const el = root.querySelector('#' + id); if (!el) return null;
     if (f.t === 'bool') return el.checked; if (f.t === 'number') return el.value === '' ? null : Number(el.value); return el.value;
   }
   function bindChips(c) {
@@ -231,8 +389,8 @@
   function neuerEintrag() {
     bearbeiteId = null; vps = [];
     $('#erfassen-titel', root).textContent = 'Training erfassen'; $('#e-delete', root).hidden = true;
-    $('#e-hund', root).innerHTML = state.hunde.map(h => `<option value="${h.id}">${esc(h.rufname)}</option>`).join('') || '<option value="">Erst einen Hund anlegen (Reiter Team)</option>';
-    $('#e-person', root).innerHTML = state.personen.map(p => `<option value="${p.id}">${esc(p.name || 'Ich')}</option>`).join(''); $('#e-person-wrap', root).style.display = state.personen.length > 1 ? '' : 'none';
+    $('#e-hund', root).innerHTML = state.hunde.filter(sichtbarerHund).map(h => `<option value="${h.id}">${esc(h.rufname)}</option>`).join('') || '<option value="">Erst einen Hund anlegen (Reiter Team)</option>';
+    $('#e-person', root).innerHTML = state.personen.map(p => `<option value="${p.id}">${esc(p.name || 'Ich')}</option>`).join(''); $('#e-person', root).value = state.person.id; $('#e-person-wrap', root).style.display = state.personen.length > 1 ? '' : 'none';
     $('#e-typ', root).value = 'training'; $('#e-beginn', root).value = toLocalInput(new Date()); $('#e-dauer', root).value = '';
     ['e-ort', 'e-temp', 'e-wind', 'e-km', 'e-ausbilder', 'e-naechster', 'e-freitext', 'e-hv', 'e-hn', 'e-ha'].forEach(id => $('#' + id, root).value = '');
     $('#e-windr', root).value = ''; $('#e-nied', root).value = ''; $('#e-ergebnis', root).value = 'offen';
@@ -286,7 +444,7 @@
 
   function renderStart() {
     $('#startlead', root).textContent = state.teams.length ? (state.person.name ? state.person.name + ', ' : '') + eintraege().length + ' Einträge, ' + state.teams.length + ' Team(s).' : 'Willkommen. Lege zuerst Hund und Team an, dann kannst du Trainings erfassen.';
-    $('#startampel', root).innerHTML = state.teams.map(t => { const a = ampel(t.id); const w = wochenSeit(t.id); return `<div class="ampel ${a === 'n' ? '' : a}"><span><span class="dot ${a}"></span>${esc(teamLabel(t))}</span><small>${w == null ? 'noch kein Training' : 'letztes Training vor ' + (w < 1 ? Math.round(w * 7) + ' Tagen' : Math.round(w) + ' Wochen')}</small></div>`; }).join('');
+    $('#startampel', root).innerHTML = state.teams.filter(t => sichtbarerHund(hund(t.hundId) || {})).map(t => { const a = ampel(t.id); const w = wochenSeit(t.id); return `<div class="ampel ${a === 'n' ? '' : a}"><span><span class="dot ${a}"></span>${esc(teamLabel(t))}</span><small>${w == null ? 'noch kein Training' : 'letztes Training vor ' + (w < 1 ? (Math.round(w * 7) === 1 ? '1 Tag' : Math.round(w * 7) + ' Tagen') : (Math.round(w) === 1 ? '1 Woche' : Math.round(w) + ' Wochen'))}</small></div>`; }).join('');
     const es = eintraege().sort((a, b) => Date.parse(b.data.beginn) - Date.parse(a.data.beginn)).slice(0, 5);
     $('#startletzte', root).innerHTML = es.length ? es.map(zeile).join('') : '<div class="empty">Noch keine Einträge.</div>';
     bindZeilen($('#startletzte', root));
@@ -304,7 +462,7 @@
   }
   function renderAuswertung() {
     const proHund = state.personen.length > 1 ? state.hunde.map(h => { const tids = state.teams.filter(t => t.hundId === h.id).map(t => t.id); const es = eintraege().filter(e => tids.includes(e.data.teamId)); const f = [...new Set(state.teams.filter(t => t.hundId === h.id).map(t => (person(t.personId) || {}).name || '?'))]; return `<p class="hint">${esc(h.rufname)}: ${es.length} Einträge gesamt, geführt von ${esc(f.join(', '))}</p>`; }).join('') : '';
-    $('#a-ampel', root).innerHTML = proHund + state.teams.map(t => { const a = ampel(t.id); const r = reife(t.id); return `<div class="ampel ${a === 'n' ? '' : a}"><span><span class="dot ${a}"></span>${esc(teamLabel(t))}</span><small>${r.eintraege} Einträge in 3 Monaten, ${Math.round(r.anteilGut * 100)} % erfolgreich</small></div>`; }).join('') || '<div class="empty">Noch keine Teams.</div>';
+    $('#a-ampel', root).innerHTML = proHund + state.teams.filter(t => sichtbarerHund(hund(t.hundId) || {})).map(t => { const a = ampel(t.id); const r = reife(t.id); return `<div class="ampel ${a === 'n' ? '' : a}"><span><span class="dot ${a}"></span>${esc(teamLabel(t))}</span><small>${r.eintraege} Einträge in 3 Monaten, ${Math.round(r.anteilGut * 100)} % erfolgreich</small></div>`; }).join('') || '<div class="empty">Noch keine Teams.</div>';
     const st = statistik(null, 84); const wochen = []; for (let i = 11; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i * 7 - ((d.getDay() + 6) % 7)); wochen.push(d.toISOString().slice(0, 10)); }
     const max = Math.max(1, ...wochen.map(w => st.wochen[w] || 0));
     $('#a-wochen', root).innerHTML = wochen.map(w => `<div style="height:${(st.wochen[w] || 0) / max * 100}%" title="${w}: ${st.wochen[w] || 0}"><span>${(wochen.indexOf(w) % 3 === 2) ? w.slice(8, 10) + '.' + w.slice(5, 7) + '.' : ''}</span></div>`).join('');
@@ -314,6 +472,7 @@
     $('#a-reife', root).innerHTML = state.teams.map(t => { const r = reife(t.id); return `<p><b>${esc(teamLabel(t))}</b><br>${r.ok ? '<span class="dot g"></span>Bedingungen erfüllt' : '<span class="dot a"></span>noch nicht erfüllt'}: ${r.eintraege} Einträge (${r.proWoche.toFixed(1)} pro Woche, Ziel ≥ 1), ${Math.round(r.anteilGut * 100)} % erfolgreich (Ziel ≥ 80 %).<br><span class="hint">Prüfungsbausteine je Modul werden über die Prüfungsordnung konfiguriert – in dieser Version noch nicht hinterlegt.</span></p>`; }).join('') || '<div class="empty">Noch keine Teams.</div>';
   }
   function renderTeam() {
+    if (opts.rahmen === 'barry') { const v = $('#v-team', root); v.innerHTML = '<h2>Personen, Hunde und Teams</h2><p class="lead">In BARRY kommen Personen und Hunde aus der Staffelverwaltung (Verwaltung → Personen / Hunde). Teams je Sparte entstehen automatisch aus Hundeführer/-in und den Sparten des Hundes.</p>' + state.hunde.filter(sichtbarerHund).map(h => `<div class="card"><b>${esc(h.rufname)}</b> <small class="hint">${esc(h.rasse || '')}</small><div class="chips" style="margin-top:6px">${state.teams.filter(t => t.hundId === h.id).map(t => `<span class="chip on">${esc((person(t.personId) || {}).name || '?')} · ${esc(SPARTEN[t.sparte].label)}</span>`).join('')}</div></div>`).join(''); renderTeamchip(); return; }
     $('#personenliste', root).innerHTML = state.personen.map(p => `<div class="entry" style="cursor:default"><div><b>${esc(p.name || 'Ich (ohne Namen)')}</b><small>${esc(p.organisation || '')} · ${state.teams.filter(t => t.personId === p.id).length} Team(s)</small></div>${state.personen.length > 1 ? `<button class="ghost danger" data-pdel="${p.id}">Entfernen</button>` : ''}</div>`).join('');
     $$('[data-pdel]', root).forEach(b => b.onclick = () => { const n = state.teams.filter(t => t.personId === b.dataset.pdel).length; if (confirm('Person und ihre ' + n + ' Team(s) samt Einträgen entfernen?')) { const tids = state.teams.filter(t => t.personId === b.dataset.pdel).map(t => t.id); state.teams = state.teams.filter(t => t.personId !== b.dataset.pdel); state.records = state.records.filter(r => r.type !== 'entry' || !tids.includes(r.data.teamId)); state.personen = state.personen.filter(p => p.id !== b.dataset.pdel); if (!person(state.person.id)) state.person = state.personen[0]; speichern(); renderTeam(); } });
     $('#p-name', root).value = ''; $('#p-org', root).value = '';
@@ -329,7 +488,10 @@
   document.addEventListener('tagebuch:changed', () => { if (state && !state.personen) migriere(state); });
 
   function start(o) {
-    opts = o || {}; root = opts.root || document; state = opts.state || laden();
+    opts = o || {}; root = opts.root || document.body; if (root === document) root = document.body;
+    markupEinsetzen(root, opts.rahmen === 'barry' ? 'barry' : 'standalone');
+    state = opts.state ? migriere(opts.state) : laden();
+    if (opts.rahmen !== 'barry') document.documentElement.classList.add('tbm-page');
     if (state.einstellungen.theme) document.documentElement.dataset.theme = state.einstellungen.theme;
     $$('[data-go]', root).forEach(b => b.onclick = () => { if (b.dataset.go === 'erfassen' && !bearbeiteId) neuerEintrag(); go(b.dataset.go); });
     $('#e-hund', root).onchange = () => { renderSpartenWahl(); };
@@ -354,8 +516,8 @@
     $('#d-reset', root).onclick = () => { if (confirm('Wirklich alle Daten löschen? Vorher sichern!')) { state = leer(); speichern(); renderTeam(); go('start'); } };
     $('#teamchip', root).onclick = () => go('team');
     renderTeamchip(); go('start');
-    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+    if (opts.rahmen !== 'barry' && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
   }
 
-  win.TagebuchModul = { start, import: importPaket, exportPaket, reife, statistik, ampel, get state() { return state; }, SPARTEN, VP_FELDER };
+  win.TagebuchModul = { start, import: importPaket, exportPaket, reife, statistik, ampel, go, get state() { return state; }, SPARTEN, VP_FELDER, leer, migriere };
 })(window);
