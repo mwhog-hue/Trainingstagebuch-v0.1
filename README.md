@@ -19,11 +19,15 @@ Beide nutzen dieselben Dateien `tagebuch-modul.js` und `rhs-exchange.js`.
 - Auswertung: Ampel Trainingsrückstand (Gelb ab 6, Rot ab 12 Wochen, einstellbar), Wochenübersicht, Kennzahlen je Sparte, Prüfungsreife-Vorstufe (3 Monate, ≥ 1/Woche, ≥ 80 % erfolgreich)
 - Einlesen aller Formate der App-Familie über rhs-exchange: v1/v2/v3, Übergabe-Export und Protokoll-Sicherung der drei Assistenten, Flächen-Auswertungsbogen, Sicherungen der alten Tagebücher (Rettungshundearbeit v2.9.2, Mantrailing v2.0) inkl. Ort-Vorlagen; eigene Sicherung wiederherstellen
 - Export: Sicherung (JSON), Austauschpaket v3, CSV, GPX, Druck/PDF
+- Schnelle Eingabe: nur Hund, Sparte, Ort und Ergebnis sind sichtbar, alles andere klappt bei Bedarf auf (Details je Sparte, Wetter, Helfer mit einklappbarer Auffindesituation, Hundezustand); „Wie beim letzten Mal“ übernimmt Ort, Km, Ausbilder und Helfer aus dem letzten Eintrag derselben Sparte
+- Wetterknopf: nur auf Antippen, holt Temperatur, gefühlte Temperatur, Luftfeuchte, Wind mit Richtung, Böen, Niederschlag bei Open-Meteo (einzige Netzverbindung der App)
 - Offline, ohne Server, Daten nur im Gerät (localStorage + IndexedDB-Spiegel)
+
+- Auswertung: Wochenübersicht je Sparte filterbar, Teamfortschritt (letzte drei gegen vorige drei Einheiten, Δ zur Voreinheit), regelbasierte Trainingsempfehlung, Excel-Datei (.xlsx) mit Blatt „Alle Einträge“ und je Sparte allen Detailfeldern – erzeugt im Gerät ohne Netz
+- Mantrailing: Wetter beim Legen und beim Arbeiten getrennt, je mit Wetterknopf
 
 ## Noch offen (bewusst)
 - Prüfungsbausteine je Modul (kommen aus der Prüfungsordnungs-Konfiguration)
-- Excel-Auswertung, Trainingsempfehlung, Teamfortschritt-Delta, Wochen-Diagramm je Sparte
 - Fotos/Skizzen anzeigen, Karte für Tracks
 - Impressum/Datenschutz einsetzen
 
